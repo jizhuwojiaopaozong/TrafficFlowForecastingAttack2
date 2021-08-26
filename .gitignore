@@ -7,4 +7,4 @@ transformer-gif
 
 .idea
 /venv
-./transformer-multistep.py
+transformer-multistep.py
