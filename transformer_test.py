@@ -22,7 +22,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # 110-model ,105 best result
 # 100-model ,95 best result
-input_window = 90  # number of input steps
+input_window = 95  # number of input steps
 output_window = 1  # number of prediction steps, in this model its fixed to one
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -148,4 +148,5 @@ if __name__ == "__main__":
     y_pred = predicted[:288]
     y_true = test_y[:288]
     result_pic_path = 'result/begin_img/'
-    plot_results(y_pred.detach().numpy(), y_true.detach().numpy(), result_pic_path)
+    # plot_results(y_pred.detach().numpy(), y_true.detach().numpy(), result_pic_path)
+    plot_results(y_pred, y_true, result_pic_path)

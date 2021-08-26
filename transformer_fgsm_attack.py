@@ -20,8 +20,8 @@ from util.utils import eval_regress, write_log, plot_results_attack
 from pandas import read_csv
 from sklearn.preprocessing import MinMaxScaler
 
-epsilon = 0.1
-input_window = 90  # number of input steps
+epsilon = 0.15
+input_window = 95  # number of input steps
 output_window = 1  # number of prediction steps, in this model its fixed to one
 criterion = nn.MSELoss()  # define loss function
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
