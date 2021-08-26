@@ -8,18 +8,10 @@ from matplotlib import pyplot
 torch.manual_seed(0)
 np.random.seed(0)
 
-# S is the source sequence length
-# T is the target sequence length
-# N is the batch size
-# E is the feature number
-
-#src = torch.rand((10, 32, 512)) # (S,N,E) 
-#tgt = torch.rand((20, 32, 512)) # (T,N,E)
-#out = transformer_model(src, tgt)
 
 input_window = 100  # number of input steps
 output_window = 1  # number of prediction steps, in this model its fixed to one
-batch_size = 10 
+batch_size = 10
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -40,7 +32,7 @@ class PositionalEncoding(nn.Module):
           
 
 class TransAm(nn.Module):
-    def __init__(self,feature_size=250,num_layers=1,dropout=0.1):
+    def __init__(self,feature_size=250, num_layers=1, dropout=0.1):
         super(TransAm, self).__init__()
         self.model_type = 'Transformer'
         
@@ -48,15 +40,16 @@ class TransAm(nn.Module):
         self.pos_encoder = PositionalEncoding(feature_size)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=10, dropout=dropout)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)        
-        self.decoder = nn.Linear(feature_size,1)
+        self.decoder = nn.Linear(feature_size, 1)
+        # self.relu = nn.LeakyReLU(0.01)
         self.init_weights()
 
     def init_weights(self):
-        initrange = 0.1    
+        initrange = 0.1
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self,src):
+    def forward(self, src):
         if self.src_mask is None or self.src_mask.size(0) != len(src):
             device = src.device
             mask = self._generate_square_subsequent_mask(len(src)).to(device)
@@ -65,6 +58,7 @@ class TransAm(nn.Module):
         src = self.pos_encoder(src)
         output = self.transformer_encoder(src,self.src_mask)#, self.src_mask)
         output = self.decoder(output)
+        #output = self.relu(output)
         return output
 
     def _generate_square_subsequent_mask(self, sz):
@@ -93,15 +87,14 @@ def get_data(train_data_path, test_data_path):
     # loading traffic-flow data from a file
     from pandas import read_csv
     train_series = read_csv(train_data_path, header=0, index_col=0, parse_dates=True, squeeze=True)
-    # test_series = read_csv(test_data_path, header=0, index_col=0, parse_dates=True, squeeze=True)
-    # looks like normalizing input values curtial for the model
+
     attr = r"Lane 1 Flow (Veh/5 Minutes)"
-    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaler = MinMaxScaler(feature_range=(-1, 1))
     amplitude = scaler.fit_transform(train_series[attr].to_numpy().reshape(-1, 1)).reshape(-1)
     # amplitude = scaler.fit_transform(amplitude.reshape(-1, 1)).reshape(-1)
     
     
-    sampels = 5500
+    sampels = 5600
     # train_samples = 5800
     train_data = amplitude[:sampels]
     test_data = amplitude[sampels:]
@@ -118,6 +111,7 @@ def get_data(train_data_path, test_data_path):
 
     return train_sequence.to(device), test_data.to(device)
 
+
 def get_batch(source, i, batch_size):
     seq_len = min(batch_size, len(source) - 1 - i)
     data = source[i:i+seq_len]    
@@ -127,7 +121,7 @@ def get_batch(source, i, batch_size):
 
 
 def train(train_data):
-    model.train()  # Turn on the train mode \o/
+    model.train()  # Turn on the train mode
     total_loss = 0.
     start_time = time.time()
 
@@ -154,6 +148,7 @@ def train(train_data):
             total_loss = 0
             start_time = time.time()
 
+
 def plot_and_loss(eval_model, data_source,epoch):
     eval_model.eval() 
     total_loss = 0.
@@ -161,13 +156,12 @@ def plot_and_loss(eval_model, data_source,epoch):
     truth = torch.Tensor(0)
     with torch.no_grad():
         for i in range(0, len(data_source) - 1):
-            data, target = get_batch(data_source, i,1)
+            data, target = get_batch(data_source, i, 1)
             output = eval_model(data)            
             total_loss += criterion(output, target).item()
             test_result = torch.cat((test_result, output[-1].view(-1).cpu()), 0)
             truth = torch.cat((truth, target[-1].view(-1).cpu()), 0)
-            
-    #test_result = test_result.cpu().numpy() -> no need to detach stuff.. 
+
     len(test_result)
 
     pyplot.plot(test_result[:288], color="red")
@@ -175,19 +169,19 @@ def plot_and_loss(eval_model, data_source,epoch):
     # pyplot.plot(test_result-truth, color="green")  # 测试结果和真实值之间的差
     pyplot.grid(True, which='both')
     pyplot.axhline(y=0, color='k')
-    pyplot.savefig('graph/transformer-epoch%d.png'%epoch)
+    pyplot.savefig('graph/transformer-epoch%d.png' % epoch)
     pyplot.close()
     
     return total_loss / i
 
 
 # predict the next n steps based on the input data 
-def predict_future(eval_model, data_source,steps):
+def predict_future(eval_model, data_source, steps):
     eval_model.eval() 
     total_loss = 0.
     test_result = torch.Tensor(0)    
     truth = torch.Tensor(0)
-    data, _ = get_batch(data_source, 0,1)
+    data, _ = get_batch(data_source, 0, 1)
     with torch.no_grad():
         for i in range(0, steps):            
             output = eval_model(data[-input_window:])                        
@@ -205,13 +199,13 @@ def predict_future(eval_model, data_source,steps):
         
 
 def evaluate(eval_model, data_source):
-    eval_model.eval() # Turn on the evaluation mode
+    eval_model.eval()  # Turn on the evaluation mode
     total_loss = 0.
     eval_batch_size = 1000
     with torch.no_grad():
         for i in range(0, len(data_source) - 1, eval_batch_size):
-            data, targets = get_batch(data_source, i,eval_batch_size)
-            output = eval_model(data)            
+            data, targets = get_batch(data_source, i, eval_batch_size)
+            output = eval_model(data)
             total_loss += len(data[0]) * criterion(output, targets).cpu().item()
     return total_loss / len(data_source)
 
@@ -220,10 +214,9 @@ train_data_path = r"train.txt"
 test_data_path = r"test.txt"
 train_data, val_data = get_data(train_data_path, test_data_path)
 model = TransAm().to(device)
-
 criterion = nn.MSELoss()
 lr = 0.02
-#optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
@@ -237,7 +230,7 @@ for epoch in range(1, epochs + 1):
     
     if(epoch % 10 is 0):
         val_loss = plot_and_loss(model, val_data,epoch)
-        predict_future(model, val_data,200)
+        predict_future(model, val_data, 200)
     else:
         val_loss = evaluate(model, val_data)
    
@@ -251,9 +244,4 @@ for epoch in range(1, epochs + 1):
     #    best_model = model
 
     scheduler.step()
-torch.save(model, r"checkout/model.pth")
-#src = torch.rand(input_window, batch_size, 1) # (source sequence length,batch size,feature number) 
-#out = model(src)
-#
-#print(out)
-#print(out.shape)
+torch.save(model, "checkpoint/transformer-110-model.pth")

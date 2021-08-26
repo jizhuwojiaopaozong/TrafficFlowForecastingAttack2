@@ -17,8 +17,8 @@ np.random.seed(0)
 #tgt = torch.rand((20, 32, 512)) # (T,N,E)
 #out = transformer_model(src, tgt)
 
-input_window = 100 # number of input steps
-output_window = 1 # number of prediction steps, in this model its fixed to one
+input_window = 100  # number of input steps
+output_window = 1  # number of prediction steps, in this model its fixed to one
 batch_size = 10 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -83,25 +83,25 @@ def create_inout_sequences(input_data, tw):
     for i in range(L-tw):
         train_seq = input_data[i:i+tw]
         train_label = input_data[i+output_window:i+tw+output_window]
-        inout_seq.append((train_seq ,train_label))
+        inout_seq.append((train_seq, train_label))
     return torch.FloatTensor(inout_seq)
 
 def get_data():
     # construct a littel toy dataset
-    time        = np.arange(0, 400, 0.1)    
-    amplitude   = np.sin(time) + np.sin(time*0.05) +np.sin(time*0.12) *np.random.normal(-0.2, 0.2, len(time))
+    time = np.arange(0, 400, 0.1)
+    amplitude = np.sin(time) + np.sin(time*0.05) + np.sin(time*0.12) * np.random.normal(-0.2, 0.2, len(time))
 
     
     from sklearn.preprocessing import MinMaxScaler
     
     #loading weather data from a file
-    #from pandas import read_csv
-    #series = read_csv('daily-min-temperatures.csv', header=0, index_col=0, parse_dates=True, squeeze=True)
+    from pandas import read_csv
+    series = read_csv('daily-min-temperatures.csv', header=0, index_col=0, parse_dates=True, squeeze=True)
     
     # looks like normalizing input values curtial for the model
     scaler = MinMaxScaler(feature_range=(-1, 1)) 
-    #amplitude = scaler.fit_transform(series.to_numpy().reshape(-1, 1)).reshape(-1)
-    amplitude = scaler.fit_transform(amplitude.reshape(-1, 1)).reshape(-1)
+    amplitude = scaler.fit_transform(series.to_numpy().reshape(-1, 1)).reshape(-1)
+    # amplitude = scaler.fit_transform(amplitude.reshape(-1, 1)).reshape(-1)
     
     
     sampels = 2600
@@ -111,16 +111,16 @@ def get_data():
     # convert our train data into a pytorch train tensor
     #train_tensor = torch.FloatTensor(train_data).view(-1)
     # todo: add comment.. 
-    train_sequence = create_inout_sequences(train_data,input_window)
+    train_sequence = create_inout_sequences(train_data, input_window)
     train_sequence = train_sequence[:-output_window] #todo: fix hack? -> din't think this through, looks like the last n sequences are to short, so I just remove them. Hackety Hack.. 
 
     #test_data = torch.FloatTensor(test_data).view(-1) 
-    test_data = create_inout_sequences(test_data,input_window)
+    test_data = create_inout_sequences(test_data, input_window)
     test_data = test_data[:-output_window] #todo: fix hack?
 
-    return train_sequence.to(device),test_data.to(device)
+    return train_sequence.to(device), test_data.to(device)
 
-def get_batch(source, i,batch_size):
+def get_batch(source, i, batch_size):
     seq_len = min(batch_size, len(source) - 1 - i)
     data = source[i:i+seq_len]    
     input = torch.stack(torch.stack([item[0] for item in data]).chunk(input_window,1)) # 1 is feature size
@@ -129,12 +129,12 @@ def get_batch(source, i,batch_size):
 
 
 def train(train_data):
-    model.train() # Turn on the train mode \o/
+    model.train()  # Turn on the train mode \o/
     total_loss = 0.
     start_time = time.time()
 
     for batch, i in enumerate(range(0, len(train_data) - 1, batch_size)):
-        data, targets = get_batch(train_data, i,batch_size)
+        data, targets = get_batch(train_data, i, batch_size)
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, targets)
@@ -172,9 +172,9 @@ def plot_and_loss(eval_model, data_source,epoch):
     #test_result = test_result.cpu().numpy() -> no need to detach stuff.. 
     len(test_result)
 
-    pyplot.plot(test_result,color="red")
-    pyplot.plot(truth[:500],color="blue")
-    pyplot.plot(test_result-truth,color="green")
+    pyplot.plot(test_result[:288], color="red")
+    pyplot.plot(truth[:288], color="blue")
+    # pyplot.plot(test_result-truth, color="green")  # 测试结果和真实值之间的差
     pyplot.grid(True, which='both')
     pyplot.axhline(y=0, color='k')
     pyplot.savefig('graph/transformer-epoch%d.png'%epoch)
@@ -198,8 +198,8 @@ def predict_future(eval_model, data_source,steps):
     data = data.cpu().view(-1)
     
     # I used this plot to visualize if the model pics up any long therm struccture within the data. 
-    pyplot.plot(data,color="red")       
-    pyplot.plot(data[:input_window],color="blue")    
+    pyplot.plot(data, color="red")
+    pyplot.plot(data[:input_window], color="blue")
     pyplot.grid(True, which='both')
     pyplot.axhline(y=0, color='k')
     pyplot.savefig('graph/transformer-future%d.png'%steps)
@@ -214,20 +214,20 @@ def evaluate(eval_model, data_source):
         for i in range(0, len(data_source) - 1, eval_batch_size):
             data, targets = get_batch(data_source, i,eval_batch_size)
             output = eval_model(data)            
-            total_loss += len(data[0])* criterion(output, targets).cpu().item()
+            total_loss += len(data[0]) * criterion(output, targets).cpu().item()
     return total_loss / len(data_source)
 
 train_data, val_data = get_data()
 model = TransAm().to(device)
 
 criterion = nn.MSELoss()
-lr = 0.005 
+lr = 0.02
 #optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
 
 best_val_loss = float("inf")
-epochs = 100 # The number of epochs
+epochs = 100  # The number of epochs
 best_model = None
 
 for epoch in range(1, epochs + 1):
@@ -249,8 +249,8 @@ for epoch in range(1, epochs + 1):
     #    best_val_loss = val_loss
     #    best_model = model
 
-    scheduler.step() 
-
+    scheduler.step()
+torch.save(model, r"checkpoint/model.pth")
 #src = torch.rand(input_window, batch_size, 1) # (source sequence length,batch size,feature number) 
 #out = model(src)
 #

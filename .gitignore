@@ -4,3 +4,6 @@ traindata.pt
 .ipynb_checkpoints
 graph
 transformer-gif
+
+.idea
+/venv
