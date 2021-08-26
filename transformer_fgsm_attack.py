@@ -20,7 +20,7 @@ from util.utils import eval_regress, write_log, plot_results_attack
 from pandas import read_csv
 from sklearn.preprocessing import MinMaxScaler
 
-epsilon = 0.2
+epsilon = 0.1
 input_window = 90  # number of input steps
 output_window = 1  # number of prediction steps, in this model its fixed to one
 criterion = nn.MSELoss()  # define loss function
