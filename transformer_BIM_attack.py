@@ -139,7 +139,8 @@ if __name__ == "__main__":
     test_x.requires_grad = True  # 设置该变量可求梯度
     output = transformer(test_x)
 
-    # ===============================生成扰动数据
+    # ===============================BIM生成扰动数据
+    # 参考链接：https://github.com/ej0cl6/pytorch-adversarial-examples/blob/master/attackers.py
     loss = criterion(output, test_y)
     loss.backward()
     data_grad = test_x.grad.data  # 取出梯度
